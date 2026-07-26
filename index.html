@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="hi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lande Family Portal & Cloud Vault</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyanBrand: {
+                            50: '#ecfeff',
+                            100: '#cffaff',
+                            300: '#67e8f9',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                            900: '#164e63',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; width: 100vw; max-width: 100%; }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.1); }
+        .dark .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4); }
+        .glass-modal { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(20px); }
+        .dark .glass-modal { background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px); }
+        .glow-btn { background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4); }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 min-h-screen pb-20 relative w-full">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between w-full">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-cyan-600 flex items-center justify-center text-white font-black text-sm shadow overflow-hidden">
+                    <img id="appHeaderLogo" src="" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h1 class="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-1.5">
+                        Lande Family Portal
+                        <span id="syncIndicator" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Cloud Synced Active"></span>
+                    </h1>
+                    <p id="cloudSyncSubtext" class="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">Secure Cloud Vault (Live Synced)</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="toggleAdminLoginModal()" id="adminBtnLabel" class="px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-cyan-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer shadow-sm relative z-20 hover:border-cyan-500 transition-colors">
+                    Admin Login
+                </button>
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 flex items-center justify-center cursor-pointer relative z-20 text-base shadow-sm hover:scale-105 transition-transform">
+                    ☀️/🌙
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Section -->
+    <main class="max-w-4xl mx-auto px-4 pt-6 space-y-6 w-full">
+
+        <!-- Admin Notice & Publish Button Bar -->
+        <div id="adminNoticeBar" class="hidden p-4 bg-gradient-to-r from-amber-500/20 via-cyan-500/20 to-amber-500/20 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-lg relative z-30">
+            <div>
+                <span class="font-extrabold text-amber-600 dark:text-amber-400 text-sm">ADMIN MODE ACTIVE</span>
+                <p id="activeDevicesCount" class="text-[10px] font-bold mt-0.5">Live Sync: Multi-device cloud sync enabled</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="triggerLogoUpload()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow">📷 Change Logo</button>
+                <button onclick="exportPortalData()" class="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow">📥 Export Backup</button>
+                <button onclick="triggerImportPortalData()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow">📤 Import Backup</button>
+                <button onclick="window.saveDataToFirestore()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center gap-1.5 shadow-lg cursor-pointer">
+                    ☁️ Publish Changes
+                </button>
+                <button onclick="logoutAdmin()" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-extrabold rounded-xl text-xs cursor-pointer">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Hero Section -->
+        <section class="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 glass-panel p-6 text-white bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <span class="px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold">Lande Residence Nashik</span>
+                    <h2 class="text-2xl font-black mt-2">Lande Family Hub</h2>
+                    <p class="text-xs text-slate-300 mt-1">Manage profiles, folders, passbooks and maps securely.</p>
+                </div>
+                <button onclick="handleProfileClick(event, 0)" class="px-5 py-2.5 glow-btn text-white font-extrabold rounded-2xl text-xs shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                    Unlock Vault
+                </button>
+            </div>
+        </section>
+
+        <!-- Quick Tabs -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <button onclick="openModal('contactModal')" class="p-4 rounded-2xl glass-panel text-left flex items-center space-x-3.5 shadow-sm hover:shadow-md cursor-pointer relative z-10 transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-600 flex items-center justify-center font-bold">📞</div>
+                <div>
+                    <h3 class="text-sm font-extrabold">Telephone Directory</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Family Contacts</p>
+                </div>
+            </button>
+            <button onclick="openModal('wifiModal')" class="p-4 rounded-2xl glass-panel text-left flex items-center space-x-3.5 shadow-sm hover:shadow-md cursor-pointer relative z-10 transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-600 flex items-center justify-center font-bold">📶</div>
+                <div>
+                    <h3 class="text-sm font-extrabold">Home Wi-Fi</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">SSID & Passwords</p>
+                </div>
+            </button>
+            <button onclick="openAddressModal()" class="p-4 rounded-2xl glass-panel text-left flex items-center space-x-3.5 shadow-sm hover:shadow-lg cursor-pointer relative z-10 transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold">📍</div>
+                <div>
+                    <h3 class="text-sm font-extrabold">Address & Maps</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Primary & Secondary Homes</p>
+                </div>
+            </button>
+        </section>
+
+        <!-- Profiles Section -->
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-black">Family Profiles</h2>
+                <button class="admin-only hidden px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow relative z-20" onclick="openAddMemberModal()">
+                    + Add Profile
+                </button>
+            </div>
+            <div id="membersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        </section>
+
+    </main>
+
+    <!-- Hidden Inputs -->
+    <input type="file" id="logoFileInput" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+    <input type="file" id="photoFileInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+    <input type="file" id="slabFileInput" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.doc,.docx" class="hidden" onchange="handleSlabFileUpload(event)">
+    <input type="file" id="bankFileInput" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls" class="hidden" onchange="handleBankFileInput(event)">
+    <input type="file" id="wifiQr1Input" accept="image/*" class="hidden" onchange="handleWifiQr1Upload(event)">
+    <input type="file" id="wifiQr2Input" accept="image/*" class="hidden" onchange="handleWifiQr2Upload(event)">
+    <input type="file" id="importJsonFileInput" accept=".json" class="hidden" onchange="importPortalData(event)">
+
+    <!-- Profile Hub Modal -->
+    <div id="profileHubModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-modal rounded-3xl max-w-xl w-full p-6 shadow-2xl relative space-y-5 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar z-50">
+            <button onclick="closeModal('profileHubModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <img id="hubPhoto" src="" class="w-20 h-20 rounded-2xl object-cover ring-2 ring-cyan-500">
+                    <button class="admin-only hidden absolute bottom-0 right-0 bg-cyan-600 text-white p-1 rounded-full text-[10px] cursor-pointer" onclick="triggerPhotoCropper(unlockedMemberIndex)">📷</button>
+                </div>
+                <div>
+                    <h3 id="hubName" class="font-black text-lg">Name</h3>
+                    <p id="hubPhone" class="text-xs text-slate-500 mt-0.5">Phone</p>
+                </div>
+            </div>
+            
+            <!-- Storage Amount Bar -->
+            <div class="p-3 bg-cyan-950/10 dark:bg-cyan-900/20 border border-cyan-500/30 rounded-2xl text-xs space-y-2">
+                <div class="flex justify-between font-bold">
+                    <span>Cloud Storage Allocated</span>
+                    <span id="storageUsageText" class="text-cyan-600 dark:text-cyan-400">36 GB / 100 GB (12 GB/file)</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div class="bg-cyan-500 h-full w-[36%]"></div>
+                </div>
+            </div>
+
+            <!-- Expanded View Profile Card -->
+            <div class="p-4 bg-gradient-to-br from-slate-50 via-cyan-50/30 to-slate-100 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 rounded-2xl border border-cyan-500/30 space-y-2 shadow-inner">
+                <h4 class="text-xs font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center justify-between">
+                    <span>Expanded Profile Summary</span>
+                    <span class="text-[10px] font-mono bg-cyan-500/20 px-2 py-0.5 rounded text-cyan-700 dark:text-cyan-300">Verified ID</span>
+                </h4>
+                <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <p><strong>DOB:</strong> <span id="hubDob">-</span></p>
+                    <p><strong>Gender:</strong> <span id="hubGender">-</span></p>
+                    <p class="col-span-2"><strong>Aadhaar No:</strong> <span id="hubAadhaar" class="font-mono text-cyan-600">-</span></p>
+                    <p class="col-span-2"><strong>Address:</strong> <span id="hubAddress">-</span></p>
+                    <p class="col-span-2"><strong>Vault PassKey:</strong> <span id="hubPassKey" class="font-mono font-bold text-amber-500">-</span></p>
+                </div>
+            </div>
+
+            <!-- Wix Web Links / Special Vault Section -->
+            <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Wix Websites & Web Apps</h4>
+                    <button class="admin-only hidden px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[10px] font-bold cursor-pointer" onclick="openAddWixModal()">+ Add Wix Link</button>
+                </div>
+                <div id="wixLinksContainer" class="space-y-2"></div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500">Slabs (Folders) & Passbooks</h4>
+                    <div class="flex gap-2">
+                        <button class="admin-only hidden px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[10px] font-bold cursor-pointer" onclick="openAddSlabModal()">+ Add Slab</button>
+                        <button class="admin-only hidden px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-[10px] font-bold cursor-pointer" onclick="openAddBankModal()">+ Add Bank</button>
+                    </div>
+                </div>
+                <div id="slabsAndBanksContainer" class="space-y-2.5"></div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button class="admin-only hidden w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs cursor-pointer shadow" onclick="openEditProfileModal()">Edit Details</button>
+                <button class="admin-only hidden w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow" onclick="deleteCurrentMember()">Delete Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Profile Modal -->
+    <div id="addMemberModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('addMemberModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Add New Family Profile</h3>
+            <form id="addMemberForm" onsubmit="saveNewMember(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Full Name</label>
+                    <input type="text" id="newMemberName" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border" placeholder="e.g. Rahul Lande">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Occupation / Subtitle</label>
+                    <input type="text" id="newMemberOccupation" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border" placeholder="e.g. Engineer">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Phone Number</label>
+                    <input type="text" id="newMemberPhone" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border" placeholder="+91 ">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Date of Birth (DOB)</label>
+                    <input type="text" id="newMemberDob" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border" placeholder="DD-MM-YYYY">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Aadhaar Number</label>
+                    <input type="text" id="newMemberAadhaar" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono" placeholder="XXXX XXXX 1234">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Vault PassKey</label>
+                    <input type="text" id="newMemberPassKey" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono" placeholder="Secret PassKey">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Address</label>
+                    <textarea id="newMemberAddress" rows="2" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border" placeholder="Full Address"></textarea>
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Create Profile</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('editProfileModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Edit Profile, DOB & Password</h3>
+            <form onsubmit="saveEditedProfile(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Full Name</label>
+                    <input type="text" id="editMemberName" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Phone</label>
+                    <input type="text" id="editMemberPhone" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Date of Birth (DOB)</label>
+                    <input type="text" id="editMemberDob" required placeholder="DD-MM-YYYY" class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Aadhaar Number</label>
+                    <input type="text" id="editMemberAadhaar" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Vault Login PassKey / Password</label>
+                    <div class="relative">
+                        <input type="password" id="editMemberPassKey" required class="w-full p-2.5 pr-10 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                        <button type="button" onclick="toggleEditPassVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer text-xs">👁️</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Address</label>
+                    <textarea id="editMemberAddress" rows="2" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border"></textarea>
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Wix Link Modal -->
+    <div id="addWixModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('addWixModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Add Wix Website / App Link</h3>
+            <form onsubmit="saveNewWixLink(event)" class="space-y-3 text-xs">
+                <input type="text" id="wixTitleInput" placeholder="Website Title (e.g. Portfolio Wix)" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                <input type="url" id="wixUrlInput" placeholder="https://username.wixsite.com/site" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Save Link</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Slab Modal -->
+    <div id="addSlabModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('addSlabModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Create Slab Folder</h3>
+            <form onsubmit="saveNewSlab(event)" class="space-y-3 text-xs">
+                <input type="text" id="slabTitleInput" placeholder="e.g. Income Tax Returns (12 GB)" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Create Folder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Bank Passbook Modal -->
+    <div id="addBankModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('addBankModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Add Bank Passbook File</h3>
+            <form onsubmit="saveNewBankAccount(event)" class="space-y-3 text-xs">
+                <input type="text" id="bankNameInput" placeholder="e.g. Axis Bank Passbook" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                <input type="text" id="bankDetailsInput" placeholder="e.g. A/C No: XXXX 9012" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Passbook Document (PDF / Image)</label>
+                    <button type="button" onclick="document.getElementById('bankFileInput').click()" class="w-full py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-dashed border-cyan-400 text-cyan-600 font-bold text-center cursor-pointer">Select Passbook File</button>
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Save Passbook</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Photo Crop Modal -->
+    <div id="cropperModal" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-5 max-w-sm w-full text-center shadow-2xl z-50">
+            <h3 class="font-bold text-sm mb-2">Crop & Adjust Photo</h3>
+            <div class="w-40 h-40 mx-auto bg-slate-900 rounded-2xl overflow-hidden border-2 border-cyan-400 flex items-center justify-center">
+                <canvas id="cropCanvas" class="max-w-full max-h-full"></canvas>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button onclick="closeModal('cropperModal')" class="w-1/2 py-2 bg-slate-300 dark:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer">Cancel</button>
+                <button onclick="saveCroppedPhoto()" class="w-1/2 py-2 glow-btn text-white rounded-xl text-xs font-bold cursor-pointer">Save Photo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telephone Directory Modal -->
+    <div id="contactModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('contactModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-extrabold text-base">Telephone Directory</h3>
+                <button class="admin-only hidden px-2.5 py-1 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs cursor-pointer" onclick="openEditDirectoryModal()">Edit</button>
+            </div>
+            <div id="directoryListContainer" class="space-y-2.5 text-xs max-h-72 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Edit Directory Modal -->
+    <div id="editDirectoryModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('editDirectoryModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Edit Directory</h3>
+            <div id="editDirectoryFormContainer" class="space-y-3 text-xs max-h-72 overflow-y-auto pr-1"></div>
+            <button onclick="addNewDirectoryItem()" class="w-full py-1.5 bg-cyan-600/20 text-cyan-700 dark:text-cyan-300 font-bold rounded-xl text-xs mt-2 cursor-pointer border border-cyan-500/30">+ Add Contact</button>
+            <button onclick="saveEditedDirectory()" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl mt-3 cursor-pointer">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Wi-Fi Modal -->
+    <div id="wifiModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-4 z-50">
+            <button onclick="closeModal('wifiModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <div class="flex items-center justify-between">
+                <h3 class="font-extrabold text-base">Home Wi-Fi Credentials</h3>
+                <button class="admin-only hidden px-3 py-1 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs cursor-pointer" onclick="openEditWifiModal()">Edit Wi-Fi</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="p-3.5 bg-white/80 dark:bg-slate-800 rounded-2xl border text-center space-y-2">
+                    <h4 class="font-black text-xs" id="wifi1Ssid">Airtel_Sarthak</h4>
+                    <p class="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-cyan-600 select-all" id="wifi1Pass">Sarthak @9673465849</p>
+                    <div class="w-24 h-24 mx-auto rounded-lg overflow-hidden border bg-white p-1 flex items-center justify-center" id="wifi1QrContainer"><span class="text-[10px] text-slate-400">No QR</span></div>
+                </div>
+                <div class="p-3.5 bg-white/80 dark:bg-slate-800 rounded-2xl border text-center space-y-2">
+                    <h4 class="font-black text-xs" id="wifi2Ssid">Sarthak</h4>
+                    <p class="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-cyan-600 select-all" id="wifi2Pass">Sarthak @9673465849</p>
+                    <div class="w-24 h-24 mx-auto rounded-lg overflow-hidden border bg-white p-1 flex items-center justify-center" id="wifi2QrContainer"><span class="text-[10px] text-slate-400">No QR</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Wi-Fi Modal -->
+    <div id="editWifiModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50 max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('editWifiModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Edit Wi-Fi Details & QR</h3>
+            <form onsubmit="saveEditedWifi(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 1 SSID Name</label>
+                    <input type="text" id="inputWifi1Ssid" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 1 Password</label>
+                    <input type="text" id="inputWifi1Pass" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 1 QR Image</label>
+                    <button type="button" onclick="document.getElementById('wifiQr1Input').click()" class="w-full py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-dashed border-cyan-400 text-cyan-600 font-bold text-center cursor-pointer">Upload QR 1</button>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 2 SSID Name</label>
+                    <input type="text" id="inputWifi2Ssid" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 2 Password</label>
+                    <input type="text" id="inputWifi2Pass" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Wi-Fi 2 QR Image</label>
+                    <button type="button" onclick="document.getElementById('wifiQr2Input').click()" class="w-full py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-dashed border-cyan-400 text-cyan-600 font-bold text-center cursor-pointer">Upload QR 2</button>
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl mt-2 cursor-pointer">Save Wi-Fi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Address & Map Modal -->
+    <div id="addressModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl max-w-2xl w-full shadow-2xl relative flex flex-col p-5 z-50">
+            <button onclick="closeModal('addressModal')" class="absolute top-4 right-4 z-20 p-2 bg-slate-900 text-white rounded-full cursor-pointer">✕</button>
+            <div class="flex items-center justify-between mb-3 pr-8">
+                <h3 class="font-extrabold text-base">Multi-Home Maps</h3>
+                <button class="admin-only hidden px-3 py-1 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs cursor-pointer" onclick="openAddLocationModal()">+ Add Location</button>
+            </div>
+            <div id="homeLocationsList" class="flex flex-wrap gap-2 mb-3"></div>
+            <div id="mapContainer" class="w-full h-72 rounded-2xl border-2 border-cyan-400"></div>
+        </div>
+    </div>
+
+    <!-- Add Location Modal -->
+    <div id="addLocationModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative z-50">
+            <button onclick="closeModal('addLocationModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-3">Add Home Location</h3>
+            <form onsubmit="saveNewLocation(event)" class="space-y-3 text-xs">
+                <input type="text" id="inputLocName" placeholder="Primary Home Nashik" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border">
+                <textarea id="inputLocDesc" rows="2" placeholder="Full Address" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border"></textarea>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="inputLocLat" placeholder="Latitude (19.9975)" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                    <input type="text" id="inputLocLng" placeholder="Longitude (73.7898)" required class="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border font-mono">
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl cursor-pointer">Save Location</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center z-50">
+            <button onclick="closeModal('adminModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 class="text-base font-extrabold mb-1">Admin Authentication</h3>
+            <p class="text-xs text-slate-500 mb-4">Enter master security password</p>
+            <form onsubmit="verifyAdminPassword(event)" class="space-y-3 text-left">
+                <div class="relative">
+                    <input type="password" id="adminPassInput" placeholder="Enter Admin Password" required class="w-full p-2.5 pr-10 bg-white dark:bg-slate-800 rounded-xl border text-xs font-mono">
+                    <button type="button" onclick="toggleAdminPasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 cursor-pointer text-sm p-1 z-20 select-none">👁️</button>
+                </div>
+                <div id="adminPassError" class="hidden p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-[11px] font-bold text-center">
+                    Incorrect Admin Password!
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow">Login Admin</button>
+                <div class="text-center pt-2">
+                    <button type="button" onclick="sendWhatsAppForgotRequest('Admin')" class="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold underline cursor-pointer">
+                        💬 Forgot Password? (WhatsApp +91 9673465849)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Modal for Vault Unlock -->
+    <div id="passwordModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="glass-modal rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center z-50">
+            <button onclick="closeModal('passwordModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 cursor-pointer">✕</button>
+            <h3 id="passModalMemberName" class="text-base font-extrabold mb-1">Unlock Vault</h3>
+            <p class="text-[11px] text-slate-500 mb-3">Enter PassKey to access encrypted folders.</p>
+            <form onsubmit="verifyPassword(event)" class="space-y-3 text-left">
+                <div class="relative">
+                    <input type="password" id="passInput" placeholder="Enter Passkey" required class="w-full p-2.5 pr-10 bg-white dark:bg-slate-800 rounded-xl border text-xs font-mono">
+                    <button type="button" onclick="toggleVaultPasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 cursor-pointer text-sm p-1 z-20 select-none">👁️</button>
+                </div>
+                <button type="submit" class="w-full py-2.5 glow-btn text-white font-extrabold rounded-xl text-xs cursor-pointer">Unlock</button>
+                <div class="text-center pt-2">
+                    <button type="button" onclick="sendWhatsAppForgotRequest(document.getElementById('passModalMemberName').innerText)" class="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold underline cursor-pointer">
+                        💬 Forgot PassKey? (WhatsApp +91 9673465849)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-20 right-1/2 translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl opacity-0 transition duration-300 pointer-events-none z-50"></div>
+
+    <!-- Synchronous Data Core & Storage Handler -->
+    <script>
+        const defaultMembers = [
+            { name: "Sarthak Kamlesh Lande", occupation: "Student", phone: "+91 9673465849", email: "sarthak@gmail.com", dob: "15-08-2005", gender: "Male", passKey: "@Sarthak2009", photo: "", address: "Devshree Estate, Nashik", aadhaarMasked: "XXXX XXXX 3489", slabs: [], bankAccounts: [], wixLinks: [] },
+            { name: "Kamlesh Ranu Lande", occupation: "Business", phone: "+91 7588332087", email: "kamlesh@gmail.com", dob: "10-05-1978", gender: "Male", passKey: "KAML1982", photo: "", address: "Devshree Estate, Nashik", aadhaarMasked: "XXXX XXXX 0541", slabs: [], bankAccounts: [], wixLinks: [] },
+            { name: "Sulochana Kamlesh Lande", occupation: "Homemaker", phone: "+91 8422930046", email: "sulochana@gmail.com", dob: "22-11-1982", gender: "Female", passKey: "SULU1985", photo: "", address: "Devshree Estate, Nashik", aadhaarMasked: "XXXX XXXX 5541", slabs: [], bankAccounts: [], wixLinks: [] },
+            { name: "Vimal Ranu Lande", occupation: "Elder", phone: "+91 9850301840", email: "vimal@gmail.com", dob: "04-03-1955", gender: "Female", passKey: "VIMA1111", photo: "", address: "Devshree Estate, Nashik", aadhaarMasked: "XXXX XXXX 8912", slabs: [], bankAccounts: [], wixLinks: [] }
+        ];
+
+        function getInitials(name) {
+            if (!name) return 'FL';
+            const parts = String(name).trim().split(/\s+/).filter(Boolean);
+            if (parts.length === 0) return 'FL';
+            if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+
+        function createAvatarSVG(initials) {
+            const safeInitials = initials || 'FL';
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%"><rect width="100%" height="100%" fill="#06b6d4"/><text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="34" font-weight="900">${safeInitials}</text></svg>`;
+            return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+        }
+
+        function createCrestSealSVG() {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%"><rect width="120" height="120" rx="24" fill="#0f172a"/><circle cx="60" cy="60" r="48" stroke="#38bdf8" stroke-width="4" fill="none"/><text x="60" y="65" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="900">LANDE</text></svg>`;
+            return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+        }
+
+        window.getInitials = getInitials;
+        window.createAvatarSVG = createAvatarSVG;
+        window.createCrestSealSVG = createCrestSealSVG;
+
+        // Initialize state synchronously
+        window.familyMembers = JSON.parse(localStorage.getItem('lande_members_data')) || defaultMembers;
+        window.customCrestLogo = localStorage.getItem('lande_crest_logo') || createCrestSealSVG();
+        window.wifiData = JSON.parse(localStorage.getItem('lande_wifi_data')) || { wifi1Ssid: "Airtel_Sarthak", wifi1Pass: "Sarthak @9673465849", wifi1Qr: "", wifi2Ssid: "Sarthak", wifi2Pass: "Sarthak @9673465849", wifi2Qr: "" };
+        window.directoryData = JSON.parse(localStorage.getItem('lande_directory_data')) || [
+            { name: "Sarthak", phone1: "+91 9673465849", phone2: "+91 8530498331" },
+            { name: "Kamlesh", phone1: "+91 7588332087", phone2: "" },
+            { name: "Sulochana", phone1: "+91 8422930046", phone2: "" },
+            { name: "Vimal", phone1: "+91 9850301840", phone2: "" }
+        ];
+        window.locationsData = JSON.parse(localStorage.getItem('lande_locations_data')) || [
+            { id: 1, title: "Primary Home Nashik", desc: "Flat no 29, Devshree Estate, Nashik", lat: 19.9975, lng: 73.7898 },
+            { id: 2, title: "Secondary Home Pune", desc: "Kothrud, Pune", lat: 18.5074, lng: 73.8077 }
+        ];
+
+        function saveToLocalCache() {
+            localStorage.setItem('lande_members_data', JSON.stringify(window.familyMembers));
+            localStorage.setItem('lande_crest_logo', window.customCrestLogo);
+            localStorage.setItem('lande_wifi_data', JSON.stringify(window.wifiData));
+            localStorage.setItem('lande_directory_data', JSON.stringify(window.directoryData));
+            localStorage.setItem('lande_locations_data', JSON.stringify(window.locationsData));
+        }
+        window.saveToLocalCache = saveToLocalCache;
+
+        function compressImage(file, maxDimension, quality, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    callback(compressedBase64);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        window.compressImage = compressImage;
+
+        function exportPortalData() {
+            const portalData = {
+                members: window.familyMembers,
+                crestLogo: window.customCrestLogo,
+                wifiData: window.wifiData,
+                directoryData: window.directoryData,
+                locationsData: window.locationsData,
+                exportDate: new Date().toISOString()
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portalData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `lande_family_portal_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Backup exported successfully!");
+        }
+        window.exportPortalData = exportPortalData;
+
+        function triggerImportPortalData() {
+            document.getElementById('importJsonFileInput').click();
+        }
+        window.triggerImportPortalData = triggerImportPortalData;
+
+        function importPortalData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    if (data.members) window.familyMembers = data.members;
+                    if (data.crestLogo) window.customCrestLogo = data.crestLogo;
+                    if (data.wifiData) window.wifiData = data.wifiData;
+                    if (data.directoryData) window.directoryData = data.directoryData;
+                    if (data.locationsData) window.locationsData = data.locationsData;
+
+                    saveToLocalCache();
+                    if (typeof window.updateAllUI === 'function') window.updateAllUI();
+                    if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+                    showToast("Portal data imported & applied!");
+                } catch(err) {
+                    showToast("Invalid JSON Backup File!");
+                }
+            };
+            reader.readAsText(file);
+        }
+        window.importPortalData = importPortalData;
+    </script>
+
+    <!-- Firebase Realtime Cloud Sync Script with Your Real Project Keys -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your Exact Firebase Configuration Keys
+        const firebaseConfig = {
+            apiKey: "AIzaSyByeK_xEkBe3XWj_3v2d_DdWNsKtCOlwxo",
+            authDomain: "lande-family-hub.firebaseapp.com",
+            projectId: "lande-family-hub",
+            storageBucket: "lande-family-hub.firebasestorage.app",
+            messagingSenderId: "658532731155",
+            appId: "1:658532731155:web:fd2baf335dd3ec3157b2e6",
+            measurementId: "G-2YXYD7E6PJ"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'lande-family-hub';
+
+        function updateSyncStatusUI(isSynced) {
+            const indicator = document.getElementById('syncIndicator');
+            const subtext = document.getElementById('cloudSyncSubtext');
+            if (indicator) {
+                indicator.className = `w-2.5 h-2.5 rounded-full ${isSynced ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`;
+                indicator.title = isSynced ? "Live Cloud Sync Active" : "Connecting to Cloud...";
+            }
+            if (subtext) {
+                subtext.innerText = isSynced ? "Secure Cloud Vault (Live Synced)" : "Connecting to Cloud Vault...";
+            }
+        }
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            async function initAuth() {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) { 
+                    console.warn("Auth fallback:", e); 
+                    updateSyncStatusUI(false);
+                }
+            }
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'portal_state', 'state_doc');
+                    onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            if (data.members && Array.isArray(data.members)) window.familyMembers = data.members;
+                            if (data.crestLogo) window.customCrestLogo = data.crestLogo;
+                            if (data.wifiData) window.wifiData = data.wifiData;
+                            if (data.directoryData) window.directoryData = data.directoryData;
+                            if (data.locationsData) window.locationsData = data.locationsData;
+
+                            saveToLocalCache();
+                            updateAllUI();
+                            updateSyncStatusUI(true);
+                        }
+                    }, (err) => {
+                        console.error("Cloud sync snapshot error:", err);
+                        updateSyncStatusUI(false);
+                    });
+                }
+            });
+
+            window.saveDataToFirestore = async function() {
+                saveToLocalCache();
+                
+                const payload = { 
+                    members: window.familyMembers,
+                    crestLogo: window.customCrestLogo,
+                    wifiData: window.wifiData,
+                    directoryData: window.directoryData,
+                    locationsData: window.locationsData
+                };
+
+                const payloadSize = new Blob([JSON.stringify(payload)]).size;
+                if (payloadSize > 900000) {
+                    showToast("⚠️ Data too large for single cloud document!");
+                    return;
+                }
+
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'portal_state', 'state_doc');
+                    await setDoc(docRef, payload);
+                    updateSyncStatusUI(true);
+                    showToast("Published & synced live across all devices!");
+                } catch(e) {
+                    console.error("Firestore Save Error:", e);
+                    updateSyncStatusUI(false);
+                    showToast("Saved locally (Cloud Sync Failed)");
+                }
+            };
+        } catch(e) {
+            console.warn("Firebase initialization error:", e);
+            updateSyncStatusUI(false);
+            window.saveDataToFirestore = async function() {
+                saveToLocalCache();
+                showToast("Saved locally!");
+            };
+        }
+
+        function updateAllUI() {
+            updateCrestLogoDisplay();
+            renderMembersGrid();
+            renderDirectoryList();
+            renderWifiDetails();
+            if (window.unlockedMemberIndex !== null && window.familyMembers[window.unlockedMemberIndex]) {
+                openProfileHub(window.unlockedMemberIndex);
+            }
+        }
+
+        function updateCrestLogoDisplay() {
+            const headerLogo = document.getElementById('appHeaderLogo');
+            if (headerLogo) headerLogo.src = window.customCrestLogo;
+        }
+
+        window.updateAllUI = updateAllUI;
+        window.updateCrestLogoDisplay = updateCrestLogoDisplay;
+    </script>
+
+    <!-- Global Helpers & UI Interaction Script -->
+    <script>
+        window.isAdminLoggedIn = false;
+        window.targetAuthIndex = 0;
+        window.unlockedMemberIndex = null;
+        window.mapInstance = null;
+        let cropTargetDocIndex = 0;
+        let cropImg = new Image();
+        let targetSlabIndex = null;
+
+        function toggleAdminPasswordVisibility() {
+            const passInput = document.getElementById('adminPassInput');
+            if (passInput) passInput.type = passInput.type === "password" ? "text" : "password";
+        }
+
+        function toggleVaultPasswordVisibility() {
+            const passInput = document.getElementById('passInput');
+            if (passInput) passInput.type = passInput.type === "password" ? "text" : "password";
+        }
+
+        function toggleEditPassVisibility() {
+            const passInput = document.getElementById('editMemberPassKey');
+            if (passInput) passInput.type = passInput.type === "password" ? "text" : "password";
+        }
+
+        function sendWhatsAppForgotRequest(idName) {
+            const message = encodeURIComponent(`Hello Sarthak, mujhe ${idName} ID kaa password yaad nahi aa raha hai. Kripya mujhe iss ID kaa password bata do aur change karne ki permission de do. Thank you!`);
+            window.open(`https://wa.me/919673465849?text=${message}`, '_blank');
+        }
+
+        function handleProfileClick(e, index) {
+            if (e) {
+                e.stopPropagation();
+            }
+            if (index === undefined || index === null || !window.familyMembers || !window.familyMembers[index]) {
+                showToast("Profile not found");
+                return;
+            }
+            if (window.isAdminLoggedIn) {
+                openProfileHub(index);
+            } else {
+                openModal('passwordModal', index);
+            }
+        }
+
+        function renderMembersGrid() {
+            const grid = document.getElementById('membersGrid');
+            if (!grid) return;
+            if (!window.familyMembers || window.familyMembers.length === 0) {
+                grid.innerHTML = '<p class="text-xs text-slate-400 col-span-full text-center py-4">No family profiles recorded.</p>';
+                return;
+            }
+            grid.innerHTML = window.familyMembers.map((m, i) => {
+                const initials = getInitials(m.name);
+                const photoSrc = m.photo || createAvatarSVG(initials);
+                return `
+                <div onclick="handleProfileClick(event, ${i})" class="glass-panel rounded-3xl p-5 text-center flex flex-col items-center shadow-sm hover:shadow-lg cursor-pointer transition-all transform hover:-translate-y-1 relative z-10 group">
+                    <img src="${photoSrc}" class="w-16 h-16 rounded-2xl object-cover mb-3 shadow ring-2 ring-cyan-400 group-hover:scale-105 transition-transform pointer-events-none" alt="${m.name}">
+                    <h3 class="font-extrabold text-sm text-slate-900 dark:text-white pointer-events-none">${m.name}</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 pointer-events-none">${m.occupation || 'Family Member'}</p>
+                    <button onclick="handleProfileClick(event, ${i})" class="mt-4 px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow transition-colors">
+                        ${window.isAdminLoggedIn ? 'Open Profile Hub' : 'Open Vault'}
+                    </button>
+                </div>
+            `;}).join('');
+        }
+
+        function openAddMemberModal() {
+            document.getElementById('newMemberName').value = "";
+            document.getElementById('newMemberOccupation').value = "";
+            document.getElementById('newMemberPhone').value = "+91 ";
+            document.getElementById('newMemberDob').value = "";
+            document.getElementById('newMemberAadhaar').value = "";
+            document.getElementById('newMemberPassKey').value = "";
+            document.getElementById('newMemberAddress').value = "";
+            openModal('addMemberModal');
+        }
+
+        function saveNewMember(e) {
+            e.preventDefault();
+            const name = document.getElementById('newMemberName').value.trim();
+            const occupation = document.getElementById('newMemberOccupation').value.trim();
+            const phone = document.getElementById('newMemberPhone').value.trim();
+            const dob = document.getElementById('newMemberDob').value.trim();
+            const aadhaarMasked = document.getElementById('newMemberAadhaar').value.trim();
+            const passKey = document.getElementById('newMemberPassKey').value.trim();
+            const address = document.getElementById('newMemberAddress').value.trim();
+
+            if (!name) {
+                showToast("Please enter a name.");
+                return;
+            }
+
+            const newMember = {
+                name,
+                occupation: occupation || "Family Member",
+                phone: phone || "+91 ",
+                email: "member@gmail.com",
+                dob: dob || "N/A",
+                gender: "Male",
+                passKey: passKey || "@Sarthak2009",
+                photo: "",
+                address: address || "Nashik",
+                aadhaarMasked: aadhaarMasked || "N/A",
+                slabs: [],
+                bankAccounts: [],
+                wixLinks: []
+            };
+
+            window.familyMembers.push(newMember);
+
+            if (typeof saveToLocalCache === 'function') saveToLocalCache();
+
+            closeModal('addMemberModal');
+            renderMembersGrid();
+            
+            if (typeof window.saveDataToFirestore === 'function') {
+                window.saveDataToFirestore();
+            } else {
+                showToast("Saved locally!");
+            }
+        }
+
+        function deleteCurrentMember() {
+            if (window.unlockedMemberIndex === null || window.unlockedMemberIndex === undefined) return;
+            if (confirm("Kya aap sach mein is profile ko delete karna chahte hain?")) {
+                window.familyMembers.splice(window.unlockedMemberIndex, 1);
+                window.unlockedMemberIndex = null;
+                closeModal('profileHubModal');
+                renderMembersGrid();
+                if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+                showToast("Profile deleted.");
+            }
+        }
+
+        function renderDirectoryList() {
+            const container = document.getElementById('directoryListContainer');
+            if (!container) return;
+            if (!window.directoryData || window.directoryData.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 italic">Directory empty.</p>';
+                return;
+            }
+            container.innerHTML = window.directoryData.map(d => `
+                <div class="p-3 bg-white/70 dark:bg-slate-800 rounded-2xl border">
+                    <h4 class="font-bold text-cyan-600">${d.name}</h4>
+                    <p class="text-[11px]">Phone 1: <a href="tel:${d.phone1}" class="font-mono font-bold text-slate-800 dark:text-slate-200">${d.phone1}</a></p>
+                    ${d.phone2 ? `<p class="text-[11px]">Phone 2: <a href="tel:${d.phone2}" class="font-mono font-bold text-slate-800 dark:text-slate-200">${d.phone2}</a></p>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function openEditDirectoryModal() {
+            const container = document.getElementById('editDirectoryFormContainer');
+            if (!container) return;
+            container.innerHTML = window.directoryData.map((d, idx) => `
+                <div class="p-2.5 bg-white dark:bg-slate-800 rounded-xl border space-y-2 mb-2" data-dir-index="${idx}">
+                    <div class="flex justify-between items-center">
+                        <input type="text" value="${d.name}" placeholder="Name" class="dir-name p-1 bg-slate-50 dark:bg-slate-900 rounded border text-xs font-bold w-32">
+                        <button type="button" onclick="removeDirectoryItem(${idx})" class="text-red-500 text-xs font-bold px-1 cursor-pointer">Delete</button>
+                    </div>
+                    <input type="text" value="${d.phone1}" placeholder="Phone 1" class="dir-phone1 w-full p-1 bg-slate-50 dark:bg-slate-900 rounded border text-xs font-mono">
+                    <input type="text" value="${d.phone2 || ''}" placeholder="Phone 2 (Optional)" class="dir-phone2 w-full p-1 bg-slate-50 dark:bg-slate-900 rounded border text-xs font-mono">
+                </div>
+            `).join('');
+            openModal('editDirectoryModal');
+        }
+
+        function addNewDirectoryItem() {
+            window.directoryData.push({ name: "New Contact", phone1: "+91 ", phone2: "" });
+            openEditDirectoryModal();
+        }
+
+        function removeDirectoryItem(idx) {
+            window.directoryData.splice(idx, 1);
+            openEditDirectoryModal();
+        }
+
+        function saveEditedDirectory() {
+            const container = document.getElementById('editDirectoryFormContainer');
+            const items = container.querySelectorAll('[data-dir-index]');
+            const updated = [];
+            items.forEach(item => {
+                const name = item.querySelector('.dir-name').value;
+                const phone1 = item.querySelector('.dir-phone1').value;
+                const phone2 = item.querySelector('.dir-phone2').value;
+                if (name && phone1) {
+                    updated.push({ name, phone1, phone2 });
+                }
+            });
+            window.directoryData = updated;
+            closeModal('editDirectoryModal');
+            renderDirectoryList();
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Directory updated successfully!");
+        }
+
+        function renderWifiDetails() {
+            if (!window.wifiData) return;
+            document.getElementById('wifi1Ssid').innerText = window.wifiData.wifi1Ssid || "Airtel_Sarthak";
+            document.getElementById('wifi1Pass').innerText = window.wifiData.wifi1Pass || "Sarthak @9673465849";
+            document.getElementById('wifi2Ssid').innerText = window.wifiData.wifi2Ssid || "Sarthak";
+            document.getElementById('wifi2Pass').innerText = window.wifiData.wifi2Pass || "Sarthak @9673465849";
+
+            const qrContainer1 = document.getElementById('wifi1QrContainer');
+            const qrContainer2 = document.getElementById('wifi2QrContainer');
+            if (qrContainer1) {
+                qrContainer1.innerHTML = window.wifiData.wifi1Qr ? `<img src="${window.wifiData.wifi1Qr}" class="w-full h-full object-contain">` : `<span class="text-[10px] text-slate-400">No QR</span>`;
+            }
+            if (qrContainer2) {
+                qrContainer2.innerHTML = window.wifiData.wifi2Qr ? `<img src="${window.wifiData.wifi2Qr}" class="w-full h-full object-contain">` : `<span class="text-[10px] text-slate-400">No QR</span>`;
+            }
+        }
+
+        function toggleAdminLoginModal() {
+            if (window.isAdminLoggedIn) logoutAdmin();
+            else openModal('adminModal');
+        }
+
+        function verifyAdminPassword(e) {
+            e.preventDefault();
+            const val = document.getElementById('adminPassInput').value.trim();
+            if (val === "@Sarthak2009" || val === "ADMIN2009") {
+                window.isAdminLoggedIn = true;
+                closeModal('adminModal');
+                document.getElementById('adminPassInput').value = '';
+                document.getElementById('adminPassError').classList.add('hidden');
+                document.getElementById('adminNoticeBar').classList.remove('hidden');
+                document.getElementById('adminBtnLabel').innerText = "Admin Active";
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                renderMembersGrid();
+                showToast("Admin Logged In successfully!");
+            } else {
+                document.getElementById('adminPassError').classList.add('hidden'); // Fix toggle
+                document.getElementById('adminPassError').classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            window.isAdminLoggedIn = false;
+            document.getElementById('adminNoticeBar').classList.add('hidden');
+            document.getElementById('adminBtnLabel').innerText = "Admin Login";
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            renderMembersGrid();
+            showToast("Admin Logged Out");
+        }
+
+        function openModal(id, index = 0) {
+            if (id === 'passwordModal') {
+                window.targetAuthIndex = index;
+                const member = window.familyMembers[index];
+                if (member) {
+                    document.getElementById('passModalMemberName').innerText = member.name;
+                }
+                const passInput = document.getElementById('passInput');
+                if (passInput) passInput.value = '';
+            }
+            const modalEl = document.getElementById(id);
+            if (modalEl) modalEl.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            const modalEl = document.getElementById(id);
+            if (modalEl) modalEl.classList.add('hidden');
+        }
+
+        function verifyPassword(e) {
+            e.preventDefault();
+            const passInput = document.getElementById('passInput');
+            const pass = passInput ? passInput.value.trim() : '';
+            const member = window.familyMembers[window.targetAuthIndex];
+            if (!member) {
+                showToast("Invalid profile!");
+                return;
+            }
+            if (pass === member.passKey || pass === "@Sarthak2009" || window.isAdminLoggedIn) {
+                closeModal('passwordModal');
+                if (passInput) passInput.value = '';
+                openProfileHub(window.targetAuthIndex);
+            } else {
+                showToast("Incorrect PassKey!");
+            }
+        }
+
+        function openProfileHub(index) {
+            if (index === null || index === undefined || !window.familyMembers[index]) return;
+            window.unlockedMemberIndex = index;
+            const member = window.familyMembers[index];
+            document.getElementById('hubName').innerText = member.name || "Name";
+            document.getElementById('hubPhone').innerText = member.phone || "Phone";
+            document.getElementById('hubDob').innerText = member.dob || "15-08-2005";
+            document.getElementById('hubGender').innerText = member.gender || "Male";
+            document.getElementById('hubAadhaar').innerText = member.aadhaarMasked || "XXXX XXXX 3489";
+            document.getElementById('hubAddress').innerText = member.address || "Nashik";
+            document.getElementById('hubPassKey').innerText = member.passKey || "@Sarthak2009";
+
+            const initials = getInitials(member.name);
+            document.getElementById('hubPhoto').src = member.photo || createAvatarSVG(initials);
+
+            renderSlabsAndBanks(member);
+            renderWixLinks(member);
+
+            if (window.isAdminLoggedIn) {
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+            }
+            openModal('profileHubModal');
+        }
+
+        function renderWixLinks(member) {
+            const container = document.getElementById('wixLinksContainer');
+            if (!container) return;
+            if (!member.wixLinks || member.wixLinks.length === 0) {
+                container.innerHTML = '<p class="text-[11px] text-slate-400 italic">No Wix websites added yet.</p>';
+                return;
+            }
+            container.innerHTML = member.wixLinks.map((w, wIdx) => `
+                <div class="p-2.5 bg-white dark:bg-slate-800 rounded-xl border flex items-center justify-between text-xs">
+                    <div class="truncate">
+                        <span class="font-bold text-cyan-600">${w.title}</span>
+                        <a href="${w.url}" target="_blank" class="block text-[10px] text-slate-400 truncate hover:underline">${w.url}</a>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="${w.url}" target="_blank" class="px-2.5 py-1 bg-cyan-600 text-white rounded-lg font-bold text-[10px]">Open</a>
+                        <button class="admin-only ${window.isAdminLoggedIn?'':'hidden'} text-red-500 font-bold px-1 cursor-pointer" onclick="deleteWixLink(${wIdx})">×</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddWixModal() {
+            document.getElementById('wixTitleInput').value = "";
+            document.getElementById('wixUrlInput').value = "";
+            openModal('addWixModal');
+        }
+
+        function saveNewWixLink(e) {
+            e.preventDefault();
+            const title = document.getElementById('wixTitleInput').value.trim();
+            const url = document.getElementById('wixUrlInput').value.trim();
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            if (!member.wixLinks) member.wixLinks = [];
+            member.wixLinks.push({ title, url });
+            closeModal('addWixModal');
+            openProfileHub(window.unlockedMemberIndex);
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Wix website link added!");
+        }
+
+        function deleteWixLink(wIdx) {
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            member.wixLinks.splice(wIdx, 1);
+            openProfileHub(window.unlockedMemberIndex);
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Wix link deleted.");
+        }
+
+        function renderSlabsAndBanks(member) {
+            const container = document.getElementById('slabsAndBanksContainer');
+            if (!container) return;
+            let html = '';
+
+            if (member.slabs && member.slabs.length > 0) {
+                member.slabs.forEach((slab, sIdx) => {
+                    html += `
+                    <div class="p-3 bg-white/80 dark:bg-slate-800 rounded-2xl border space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs flex items-center gap-1.5">📁 ${slab.title}</span>
+                            <div class="flex gap-1">
+                                <button onclick="triggerSlabFileUpload(${sIdx})" class="admin-only ${window.isAdminLoggedIn?'':'hidden'} px-2 py-0.5 bg-cyan-600 text-white rounded text-[10px] font-bold cursor-pointer">Upload</button>
+                                <button onclick="deleteSlab(${sIdx})" class="admin-only ${window.isAdminLoggedIn?'':'hidden'} text-red-500 text-xs px-1 cursor-pointer">×</button>
+                            </div>
+                        </div>
+                        <div class="pl-3 border-l-2 border-cyan-400 space-y-1">
+                            ${(slab.files && slab.files.length > 0) ? slab.files.map((f, fIdx) => `
+                                <div class="flex justify-between items-center text-[11px] bg-slate-50 dark:bg-slate-900 p-1.5 rounded-xl border">
+                                    <span class="truncate max-w-[150px] font-semibold">${f.name}</span>
+                                    <button onclick="downloadFile('${f.data}', '${f.name}')" class="text-cyan-600 font-bold underline cursor-pointer">Download</button>
+                                </div>
+                            `).join('') : '<p class="text-[10px] text-slate-400">No files in folder (12 GB limit per slot).</p>'}
+                        </div>
+                    </div>`;
+                });
+            }
+
+            if (member.bankAccounts && member.bankAccounts.length > 0) {
+                member.bankAccounts.forEach((acc, bIdx) => {
+                    html += `
+                    <div class="p-3 bg-white/80 dark:bg-slate-800 rounded-2xl border flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span>🏦</span>
+                            <div>
+                                <h4 class="font-bold">${acc.name}</h4>
+                                <p class="text-[10px] text-slate-400">${acc.details}</p>
+                            </div>
+                        </div>
+                        ${acc.pdf ? `<button onclick="downloadFile('${acc.pdf}', '${acc.name}')" class="text-cyan-600 font-bold underline text-[11px] cursor-pointer">Passbook</button>` : ''}
+                    </div>`;
+                });
+            }
+
+            if (!html) html = '<p class="text-xs text-slate-400 italic">No Slabs or Passbooks added yet.</p>';
+            container.innerHTML = html;
+        }
+
+        function openEditProfileModal() {
+            if (window.unlockedMemberIndex === null) return;
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            document.getElementById('editMemberName').value = member.name || "";
+            document.getElementById('editMemberPhone').value = member.phone || "";
+            document.getElementById('editMemberDob').value = member.dob || "";
+            document.getElementById('editMemberAadhaar').value = member.aadhaarMasked || "";
+            document.getElementById('editMemberPassKey').value = member.passKey || "@Sarthak2009";
+            document.getElementById('editMemberAddress').value = member.address || "";
+            openModal('editProfileModal');
+        }
+
+        function saveEditedProfile(e) {
+            e.preventDefault();
+            if (window.unlockedMemberIndex === null) return;
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            member.name = document.getElementById('editMemberName').value.trim();
+            member.phone = document.getElementById('editMemberPhone').value.trim();
+            member.dob = document.getElementById('editMemberDob').value.trim();
+            member.aadhaarMasked = document.getElementById('editMemberAadhaar').value.trim();
+            member.passKey = document.getElementById('editMemberPassKey').value.trim();
+            member.address = document.getElementById('editMemberAddress').value.trim();
+
+            closeModal('editProfileModal');
+            openProfileHub(window.unlockedMemberIndex);
+            renderMembersGrid();
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Profile, DOB & Password updated!");
+        }
+
+        let tempWifiQr1 = "";
+        let tempWifiQr2 = "";
+
+        function openEditWifiModal() {
+            document.getElementById('inputWifi1Ssid').value = window.wifiData.wifi1Ssid || "";
+            document.getElementById('inputWifi1Pass').value = window.wifiData.wifi1Pass || "";
+            document.getElementById('inputWifi2Ssid').value = window.wifiData.wifi2Ssid || "";
+            document.getElementById('inputWifi2Pass').value = window.wifiData.wifi2Pass || "";
+            tempWifiQr1 = window.wifiData.wifi1Qr || "";
+            tempWifiQr2 = window.wifiData.wifi2Qr || "";
+            openModal('editWifiModal');
+        }
+
+        function handleWifiQr1Upload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            compressImage(file, 200, 0.6, (compressedBase64) => {
+                tempWifiQr1 = compressedBase64;
+                showToast("QR 1 Loaded & Compressed ✓");
+            });
+        }
+
+        function handleWifiQr2Upload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            compressImage(file, 200, 0.6, (compressedBase64) => {
+                tempWifiQr2 = compressedBase64;
+                showToast("QR 2 Loaded & Compressed ✓");
+            });
+        }
+
+        function saveEditedWifi(e) {
+            e.preventDefault();
+            window.wifiData.wifi1Ssid = document.getElementById('inputWifi1Ssid').value;
+            window.wifiData.wifi1Pass = document.getElementById('inputWifi1Pass').value;
+            window.wifiData.wifi1Qr = tempWifiQr1;
+            window.wifiData.wifi2Ssid = document.getElementById('inputWifi2Ssid').value;
+            window.wifiData.wifi2Pass = document.getElementById('inputWifi2Pass').value;
+            window.wifiData.wifi2Qr = tempWifiQr2;
+
+            closeModal('editWifiModal');
+            renderWifiDetails();
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Wi-Fi & QR Updated & Synced!");
+        }
+
+        function openAddSlabModal() { document.getElementById('slabTitleInput').value = ""; openModal('addSlabModal'); }
+        function saveNewSlab(e) {
+            e.preventDefault();
+            const title = document.getElementById('slabTitleInput').value.trim();
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            if (!member.slabs) member.slabs = [];
+            member.slabs.push({ title, files: [] });
+            closeModal('addSlabModal');
+            openProfileHub(window.unlockedMemberIndex);
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Slab folder created!");
+        }
+        function deleteSlab(sIdx) {
+            window.familyMembers[window.unlockedMemberIndex].slabs.splice(sIdx, 1);
+            openProfileHub(window.unlockedMemberIndex);
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Folder deleted.");
+        }
+
+        function triggerSlabFileUpload(sIdx) { targetSlabIndex = sIdx; document.getElementById('slabFileInput').click(); }
+        function handleSlabFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 400000) {
+                showToast("⚠️ File size must be under 400KB for cloud sync.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = evt => {
+                const member = window.familyMembers[window.unlockedMemberIndex];
+                if (!member.slabs[targetSlabIndex].files) member.slabs[targetSlabIndex].files = [];
+                member.slabs[targetSlabIndex].files.push({ name: file.name, data: evt.target.result });
+                openProfileHub(window.unlockedMemberIndex);
+                if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+                showToast("File uploaded successfully!");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openAddBankModal() { document.getElementById('bankNameInput').value = ""; document.getElementById('bankDetailsInput').value = ""; openModal('addBankModal'); }
+        let tempBankFilePdf = "";
+        function handleBankFileInput(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 300000) {
+                showToast("⚠️ Passbook document must be under 300KB.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = evt => { tempBankFilePdf = evt.target.result; showToast("Passbook file loaded ✓"); };
+            reader.readAsDataURL(file);
+        }
+        function saveNewBankAccount(e) {
+            e.preventDefault();
+            const name = document.getElementById('bankNameInput').value.trim();
+            const details = document.getElementById('bankDetailsInput').value.trim();
+            const member = window.familyMembers[window.unlockedMemberIndex];
+            if (!member.bankAccounts) member.bankAccounts = [];
+            member.bankAccounts.push({ name, details, pdf: tempBankFilePdf });
+            tempBankFilePdf = "";
+            closeModal('addBankModal');
+            openProfileHub(window.unlockedMemberIndex);
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Bank passbook added!");
+        }
+
+        function downloadFile(dataUrl, filename) {
+            const a = document.createElement('a');
+            a.href = dataUrl; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        function triggerPhotoCropper(index) {
+            cropTargetDocIndex = index;
+            document.getElementById('photoFileInput').click();
+        }
+
+        function handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = evt => {
+                cropImg.onload = () => {
+                    const canvas = document.getElementById('cropCanvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 120; canvas.height = 120;
+                    ctx.drawImage(cropImg, 0, 0, 120, 120);
+                    openModal('cropperModal');
+                };
+                cropImg.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveCroppedPhoto() {
+            const canvas = document.getElementById('cropCanvas');
+            window.familyMembers[cropTargetDocIndex].photo = canvas.toDataURL('image/jpeg', 0.6);
+            renderMembersGrid();
+            openProfileHub(cropTargetDocIndex);
+            closeModal('cropperModal');
+            if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+            showToast("Photo updated & synced live!");
+        }
+
+        function triggerLogoUpload() { document.getElementById('logoFileInput').click(); }
+        function handleLogoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            compressImage(file, 150, 0.6, (compressedBase64) => {
+                window.customCrestLogo = compressedBase64;
+                localStorage.setItem('lande_crest_logo', window.customCrestLogo);
+                if (typeof window.updateCrestLogoDisplay === 'function') window.updateCrestLogoDisplay();
+                if (typeof window.saveDataToFirestore === 'function') window.saveDataToFirestore();
+                showToast("Crest Logo Updated & Compressed!");
+            });
+        }
+
+        function openAddressModal() {
+            openModal('addressModal');
+            setTimeout(() => {
+                if (!window.locationsData || window.locationsData.length === 0) return;
+                const loc = window.locationsData[0];
+                if (!window.mapInstance) {
+                    window.mapInstance = L.map('mapContainer').setView([loc.lat, loc.lng], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.mapInstance);
+                } else {
+                    window.mapInstance.setView([loc.lat, loc.lng], 15);
+                    window.mapInstance.invalidateSize();
+                }
+                window.locationsData.forEach(l => L.marker([l.lat, l.lng]).addTo(window.mapInstance).bindPopup(`<b>${l.title}</b><br>${l.desc}`));
+            }, 250);
+        }
+
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); }
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2500);
+        }
+
+        window.onload = function() {
+            if (typeof window.updateCrestLogoDisplay === 'function') window.updateCrestLogoDisplay();
+            renderMembersGrid();
+            renderDirectoryList();
+            renderWifiDetails();
+        };
+    </script>
+</body>
+</html>
